@@ -9,15 +9,7 @@ void main() {
   var defaultRouteName = window.defaultRouteName;
   print('defaultRouteName='+defaultRouteName);
   if("route1" == defaultRouteName){
-    runApp(new MaterialApp(
-      title: "route1",
-      home: new Scaffold(
-        appBar: new AppBar(
-          title: new Text("route1"),
-        ),
-        body: new nextpage(),
-      ),
-    ));
+    runApp(nextpage());
   } else if("route2" == defaultRouteName){
      runApp(MyApp());
   }else{

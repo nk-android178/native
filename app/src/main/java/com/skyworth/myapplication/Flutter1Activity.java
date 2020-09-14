@@ -1,5 +1,10 @@
 package com.skyworth.myapplication;
 
+import android.content.ContextWrapper;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -21,7 +26,7 @@ public class Flutter1Activity extends AppCompatActivity {
     FlutterEngine mFlutter1Engine;
     FlutterView   mFlutter1View;
     MethodChannel mFlutter1MethodChannel1;
-    String        flutter1Name = "default is null";
+    String        flutter1Name = "getFlutterName";
     Button        mButton1,mButton2;
 
     @Override
@@ -31,17 +36,20 @@ public class Flutter1Activity extends AppCompatActivity {
         setContentView(R.layout.activity_flutter1);
         initFlutterEngine();
         mFlutter1View = createFlutterView();
+        // 关键代码，将Flutter页面显示到FlutterView中
+        mFlutter1View.attachToFlutterEngine(mFlutter1Engine);
         mButton1 = findViewById(R.id.button1);
         mButton1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mFlutter1MethodChannel1!=null){
                     Log.d("TAG","mButton1 java 调用 flutter");
-                    mFlutter1MethodChannel1.invokeMethod("getFlutterName", flutter1Name, new MethodChannel.Result() {
+                    mFlutter1MethodChannel1.invokeMethod("send", "aaaa", new MethodChannel.Result() {
                         @Override
                         public void success(Object result) {
                             flutter1Name = (String) result;
                             mButton1.setText(flutter1Name);
+                            Log.d("TAG","flutter1Name ="+flutter1Name);
                         }
 
                         @Override
@@ -51,7 +59,7 @@ public class Flutter1Activity extends AppCompatActivity {
 
                         @Override
                         public void notImplemented() {
-                            Log.d("TAG","flutter 端没有实现  getFlutterName");
+                            Log.d("TAG","flutter1 端没有实现  getFlutterName");
                         }
                     });
                 }
@@ -63,11 +71,11 @@ public class Flutter1Activity extends AppCompatActivity {
             public void onClick(View v) {
                 if (mFlutter1MethodChannel1!=null){
                     Log.d("TAG","mButton2 java 调用 flutter");
-                    mFlutter1MethodChannel1.invokeMethod("checkFlutterMap", null, new MethodChannel.Result() {
+                    mFlutter1MethodChannel1.invokeMethod("getFlutterName", null, new MethodChannel.Result() {
                         @Override
                         public void success(Object result) {
                             String flutterMapStr  = (String) result;
-                            Log.d("TAG","flutterMapStr = "+ flutterMapStr);
+                            Log.d("TAG","获取flutterMapStr = "+ flutterMapStr);
                         }
 
                         @Override
@@ -77,16 +85,15 @@ public class Flutter1Activity extends AppCompatActivity {
 
                         @Override
                         public void notImplemented() {
-                            Log.d("TAG","flutter 端没有实现  checkFlutterMap");
+                            Log.d("TAG","flutter2 端没有实现  checkFlutterMap");
                         }
                     });
                 }
             }
         });
-        // 关键代码，将Flutter页面显示到FlutterView中
-        mFlutter1View.attachToFlutterEngine(mFlutter1Engine);
     }
 
+    //创建flutterview 显示flutter页面
     private FlutterView createFlutterView() {
         FlutterView flutterView = new FlutterView(this);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
@@ -110,6 +117,7 @@ public class Flutter1Activity extends AppCompatActivity {
         return flutterView;
     }
 
+    // 初始化flutter缓存
     private void initFlutterEngine() {
         mFlutter1Engine = FlutterEngineCache.getInstance().get("flutter1");
         if (mFlutter1Engine == null){
@@ -124,25 +132,36 @@ public class Flutter1Activity extends AppCompatActivity {
     }
 
     private void initChannel(FlutterEngine flutterEngine) {
-        mFlutter1MethodChannel1 = new MethodChannel(flutterEngine.getDartExecutor(), "flutter1/flutter2Java");
+        mFlutter1MethodChannel1 = new MethodChannel(flutterEngine.getDartExecutor(), "com.skyworth.myapplication/battery");
         mFlutter1MethodChannel1.setMethodCallHandler(new MethodChannel.MethodCallHandler() {
             @Override
             public void onMethodCall(MethodCall call, MethodChannel.Result result) {
-                if (call == null || result == null){
-                    if (result!=null){
-                        result.error("-1","MethodCall is null",new Exception("MethodCall is null"));
+                if(call.method.equals("getBatteryLevel")){
+                    int batteryLevel = getBatteryLevel();
+                    if(batteryLevel != -1){
+                        result.success(batteryLevel);
+                    }else {
+                        result.error("UNAVAILABLE", "Battery level not available.", null);
                     }
-                    return;
-                }
-                if ("getInt".equals(call.method)){
-                    result.success(Integer.MAX_VALUE);
-                }if ("getLong".equals(call.method)){
-                    result.success(Long.MAX_VALUE);
-                }else {
+                } else {
                     result.notImplemented();
                 }
             }
         });
+    }
+
+    private int getBatteryLevel(){
+        int batteryLevel = -1;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            BatteryManager batteryManager = (BatteryManager) getSystemService(BATTERY_SERVICE);
+            batteryLevel = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+        } else {
+            Intent intent = new ContextWrapper(getApplicationContext()).
+                    registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            batteryLevel = (intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) * 100) /
+                    intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+        }
+        return batteryLevel;
     }
 
     @Override

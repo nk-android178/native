@@ -5,3 +5,5 @@ evaluate(new File(
         settingsDir.parentFile,
         'native/flutter_module/.android/include_flutter.groovy'
 ))
+
+include ':flutter_module'
